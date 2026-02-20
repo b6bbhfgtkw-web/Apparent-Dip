@@ -99,7 +99,7 @@ If you want students to access it via a URL:
 
 ## License
 
-Add your preferred license (e.g., MIT) if you plan to share/modify freely.
+Free to use or modify as needed
 
 ---
 
