@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Apparent Dip Calculator</title>
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0B3D91" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <style>
+    :root{
+      --bg:#0b1220; --card:#111b2e; --text:#e9eefc; --muted:#b9c4e3;
+      --accent:#4da3ff; --accent2:#7ee787; --danger:#ff6b6b; --warn:#ffd166;
+      --radius:16px; --shadow: 0 10px 30px rgba(0,0,0,.35);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, system-ui, sans-serif;
+    }
+    body{ margin:0; background: radial-gradient(1200px 800px at 20% 0%, #162a55 0%, var(--bg) 55%);
+          color:var(--text); min-height:100vh; display:flex; justify-content:center; }
+    .wrap{ width:min(820px, 100%); padding:20px 16px 40px; }
+    header{ padding:10px 6px 18px; }
+    h1{ margin:0; font-size: clamp(22px, 4vw, 34px); letter-spacing:.2px; }
+    .sub{ color:var(--muted); margin-top:8px; line-height:1.35; }
+
+    .card{ background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+           border: 1px solid rgba(255,255,255,.10); border-radius: var(--radius);
+           box-shadow: var(--shadow); padding: 16px; }
+
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin: 10px 0 4px; }
+    .tab{ padding:10px 12px; border-radius: 12px; border:1px solid rgba(255,255,255,.12);
+          background: rgba(10,16,30,.55); color: var(--text); cursor:pointer; font-weight:700; }
+    .tab[aria-selected="true"]{ background: rgba(77,163,255,.22); border-color: rgba(77,163,255,.55); }
+
+    .grid{ display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media(min-width: 720px){ .grid{ grid-template-columns: 1fr 1fr 1fr; } }
+
+    label{ display:block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+    input{ width:100%; padding:12px 12px; border-radius: 12px;
+           border: 1px solid rgba(255,255,255,.15);
+           background: rgba(10,16,30,.65); color: var(--text);
+           font-size: 16px; outline: none; }
+    input:focus{ border-color: rgba(77,163,255,.8); box-shadow: 0 0 0 4px rgba(77,163,255,.15); }
+
+    .row{ display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+    button{ border:0; border-radius: 12px; padding:12px 14px; font-size: 16px; font-weight: 800;
+            background: var(--accent); color:#07101f; cursor:pointer; }
+    button.secondary{ background: rgba(255,255,255,.10); color: var(--text); font-weight:700; }
+    button:active{ transform: translateY(1px); }
+
+    .result{ margin-top: 14px; padding: 14px; border-radius: 14px;
+             background: rgba(0,0,0,.20); border:1px solid rgba(255,255,255,.10);
+             display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .big{ font-size: clamp(28px, 6vw, 46px); font-weight: 900; letter-spacing:.3px; }
+    .small{ color: var(--muted); line-height:1.35; }
+    .pill{ display:inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight:800;
+           background: rgba(126,231,135,.15); color: var(--accent2); border:1px solid rgba(126,231,135,.25); }
+    .error{ margin-top: 10px; color: var(--danger); font-weight: 700; }
+    .warn{ margin-top: 10px; color: var(--warn); font-weight: 700; }
+
+    details{ margin-top: 14px; }
+    summary{ cursor:pointer; color: var(--muted); }
+    .foot{ margin-top: 18px; color: var(--muted); font-size: 12px; line-height:1.45; }
+    .foot code{ background: rgba(255,255,255,.08); padding: 2px 6px; border-radius: 8px; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    .hint{ font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .twoCol{ display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media(min-width: 720px){ .twoCol{ grid-template-columns: 1fr 1fr; } }
+
+    .kpi{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .kpi > div{ padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.04); }
+    .kpi .label{ font-size: 12px; color: var(--muted); }
+    .kpi .value{ font-weight: 900; font-size: 15px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Apparent Dip Calculator</h1>
+      <div class="sub">Compute apparent dip along a bearing from a plane’s true dip and strike. Supports <b>Azimuth (RHR)</b> and <b>Quadrant strike + dip direction</b>.</div>
+    </header>
+
+    <main class="card">
+      <div class="twoCol">
+        <div>
+          <label for="bearing">Bearing / section direction (azimuth, 0–360°)</label>
+          <input id="bearing" inputmode="decimal" type="number" step="0.01" min="0" max="360" value="0" />
+          <div class="hint">This is the direction you want the <i>apparent dip</i> measured along (e.g., cross‑section trend).</div>
+        </div>
+        <div>
+          <label>Plane input style</label>
+          <div class="tabs" role="tablist" aria-label="Plane input style">
+            <button class="tab" id="tab-az" role="tab" aria-selected="true" aria-controls="panel-az" type="button">Azimuth (RHR)</button>
+            <button class="tab" id="tab-quad" role="tab" aria-selected="false" aria-controls="panel-quad" type="button">Quadrant + dip dir</button>
+          </div>
+          <div class="hint">Students can choose either convention. The calculator always uses the same apparent‑dip formula.</div>
+        </div>
+      </div>
+
+      <!-- Azimuth (RHR) panel -->
+      <div id="panel-az" role="tabpanel" aria-labelledby="tab-az" style="margin-top:12px;">
+        <div class="grid">
+          <div>
+            <label for="strikeAz">Strike azimuth (RHR, 0–360°)</label>
+            <input id="strikeAz" inputmode="decimal" type="number" step="0.01" min="0" max="360" value="0" />
+            <div class="hint">Right‑hand‑rule: dip direction is 90° clockwise from strike.</div>
+          </div>
+          <div>
+            <label for="dipAz">True dip (0–90°)</label>
+            <input id="dipAz" inputmode="decimal" type="number" step="0.01" min="0" max="90" value="0" />
+          </div>
+          <div>
+            <label>Derived dip direction (azimuth)</label>
+            <input id="dipDirDerived" type="text" class="mono" value="—" readonly />
+            <div class="hint">Computed as strike + 90° (mod 360).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quadrant panel -->
+      <div id="panel-quad" role="tabpanel" aria-labelledby="tab-quad" style="margin-top:12px; display:none;">
+        <div class="grid">
+          <div>
+            <label for="strikeQuad">Strike (quadrant)</label>
+            <input id="strikeQuad" type="text" placeholder="e.g., N67E" />
+            <div class="hint">Accepted examples: <span class="mono">N67E</span>, <span class="mono">N 67 E</span>, <span class="mono">S12W</span>, <span class="mono">NE</span>, <span class="mono">270</span></div>
+          </div>
+          <div>
+            <label for="dipQuad">True dip (0–90°)</label>
+            <input id="dipQuad" inputmode="decimal" type="number" step="0.01" min="0" max="90" value="0" />
+          </div>
+          <div>
+            <label for="dipDirQuad">Dip direction (quadrant or azimuth)</label>
+            <input id="dipDirQuad" type="text" placeholder="e.g., SE or S23E or 135" />
+            <div class="hint">Used to validate which side is down; magnitude uses true dip + strike.</div>
+          </div>
+        </div>
+
+        <div class="kpi" aria-live="polite">
+          <div><div class="label">Parsed strike azimuth</div><div class="value mono" id="parsedStrike">—</div></div>
+          <div><div class="label">Parsed dip direction azimuth</div><div class="value mono" id="parsedDipDir">—</div></div>
+          <div><div class="label">Consistency check</div><div class="value" id="consistency">—</div></div>
+        </div>
+      </div>
+
+      <div id="err" class="error" style="display:none"></div>
+      <div id="warn" class="warn" style="display:none"></div>
+
+      <div class="row">
+        <button id="calc">Calculate</button>
+        <button class="secondary" id="clear" type="button">Clear</button>
+      </div>
+
+      <div class="result" aria-live="polite">
+        <div>
+          <div class="pill">Result</div>
+          <div class="big" id="out">—</div>
+          <div class="small" id="meta">Enter values and tap Calculate.</div>
+        </div>
+      </div>
+
+      <details>
+        <summary>Show formula + notes</summary>
+        <div class="foot">
+          Uses: <code>tan(α) = tan(δ) × sin(θ)</code>, where <code>δ</code> is true dip, <code>α</code> is apparent dip,
+          and <code>θ</code> is the acute angle (0–90°) between the strike line and the bearing/section direction.
+          Strike is treated as a <i>line</i> (so S+180° is equivalent).
+        </div>
+      </details>
+
+      <div class="foot">
+        Local/offline tip: keep this folder in the iPhone <b>Files</b> app and open <code>index.html</code>.
+      </div>
+    </main>
+  </div>
+
+<script>
+  // ---------- Small helpers ----------
+  function norm360(x){
+    let v = x % 360;
+    if(v < 0) v += 360;
+    return v;
+  }
+  function deg2rad(d){ return d * Math.PI / 180; }
+  function rad2deg(r){ return r * 180 / Math.PI; }
+
+  // Acute angle (0–90) between strike line and bearing line
+  function acuteAngleBetweenStrikeAndBearing(strike, bearing){
+    const s = norm360(strike);
+    const b = norm360(bearing);
+    let diff = Math.abs(b - s);
+    if(diff > 180) diff = 360 - diff; // 0–180
+    if(diff > 90) diff = 180 - diff;  // 0–90
+    return diff;
+  }
+
+  // ---------- Quadrant parsing ----------
+  // Accepts:
+  //  - numeric azimuth (e.g., 270)
+  //  - cardinal/ordinal: N, S, E, W, NE, NW, SE, SW
+  //  - quadrant with angle: N67E, N 67 E, S12W, etc.
+  function parseAzOrQuadrant(raw){
+    if(raw === null || raw === undefined) return { ok:false, err:'Empty' };
+    const s0 = String(raw).trim();
+    if(!s0) return { ok:false, err:'Empty' };
+
+    // numeric?
+    const num = Number(s0);
+    if(!Number.isNaN(num) && /[-+0-9.]/.test(s0) && !/[NSEW]/i.test(s0)){
+      return { ok:true, az:norm360(num), canonical: norm360(num).toFixed(3) + '°' };
+    }
+
+    const s = s0.toUpperCase().replace(/\s+/g,'');
+
+    // Ordinal shortcuts
+    const ord = { 'N':0, 'E':90, 'S':180, 'W':270, 'NE':45, 'SE':135, 'SW':225, 'NW':315 };
+    if(ord[s] !== undefined){
+      return { ok:true, az: ord[s], canonical: s };
+    }
+
+    // Quadrant pattern NxxE etc.
+    const m = s.match(/^([NS])(\d+(?:\.\d+)?)([EW])$/);
+    if(!m) return { ok:false, err:'Use e.g., N67E, S12W, NE, or an azimuth number.' };
+
+    const ns = m[1];
+    const ang = Number(m[2]);
+    const ew = m[3];
+    if(Number.isNaN(ang)) return { ok:false, err:'Angle not recognized.' };
+    if(ang < 0 || ang > 90) return { ok:false, err:'Quadrant angle must be 0–90.' };
+
+    let az;
+    if(ns === 'N' && ew === 'E') az = ang;
+    if(ns === 'N' && ew === 'W') az = 360 - ang;
+    if(ns === 'S' && ew === 'E') az = 180 - ang;
+    if(ns === 'S' && ew === 'W') az = 180 + ang;
+
+    az = norm360(az);
+    return { ok:true, az, canonical: `${ns}${ang}${ew}` };
+  }
+
+  // Check if dip direction is perpendicular to strike line (±90°)
+  function dipDirConsistency(strikeAz, dipDirAz){
+    const a = norm360(strikeAz + 90);
+    const b = norm360(strikeAz - 90);
+    const d1 = Math.min(Math.abs(norm360(dipDirAz - a)), Math.abs(norm360(a - dipDirAz)));
+    const d2 = Math.min(Math.abs(norm360(dipDirAz - b)), Math.abs(norm360(b - dipDirAz)));
+    const delta = Math.min(d1, d2);
+    return delta; // degrees from nearest perpendicular
+  }
+
+  // ---------- Apparent dip math ----------
+  function computeApparentDip(strike, trueDip, bearing){
+    const dip = Math.min(Math.max(trueDip, 0), 90);
+    const thetaDeg = acuteAngleBetweenStrikeAndBearing(strike, bearing);
+
+    if(dip >= 89.999) return { apparent: 90.0, theta: thetaDeg };
+
+    const dipRad = deg2rad(dip);
+    const thetaRad = deg2rad(thetaDeg);
+    const tanApp = Math.tan(dipRad) * Math.sin(thetaRad);
+    const appRad = Math.atan(tanApp);
+    let appDeg = rad2deg(appRad);
+    appDeg = Math.max(0, Math.min(appDeg, dip));
+
+    return { apparent: appDeg, theta: thetaDeg };
+  }
+
+  // ---------- UI Wiring ----------
+  const tabAz = document.getElementById('tab-az');
+  const tabQuad = document.getElementById('tab-quad');
+  const panelAz = document.getElementById('panel-az');
+  const panelQuad = document.getElementById('panel-quad');
+
+  const bearingEl = document.getElementById('bearing');
+  const strikeAzEl = document.getElementById('strikeAz');
+  const dipAzEl = document.getElementById('dipAz');
+  const dipDirDerivedEl = document.getElementById('dipDirDerived');
+
+  const strikeQuadEl = document.getElementById('strikeQuad');
+  const dipQuadEl = document.getElementById('dipQuad');
+  const dipDirQuadEl = document.getElementById('dipDirQuad');
+
+  const parsedStrikeEl = document.getElementById('parsedStrike');
+  const parsedDipDirEl = document.getElementById('parsedDipDir');
+  const consistencyEl = document.getElementById('consistency');
+
+  const outEl = document.getElementById('out');
+  const metaEl = document.getElementById('meta');
+  const errEl = document.getElementById('err');
+  const warnEl = document.getElementById('warn');
+
+  let mode = 'az'; // 'az' or 'quad'
+
+  function setMode(next){
+    mode = next;
+    const azOn = (mode === 'az');
+    tabAz.setAttribute('aria-selected', azOn ? 'true':'false');
+    tabQuad.setAttribute('aria-selected', azOn ? 'false':'true');
+    panelAz.style.display = azOn ? 'block':'none';
+    panelQuad.style.display = azOn ? 'none':'block';
+    clearMessages();
+    updateDerived();
+    updateParsed();
+  }
+
+  tabAz.addEventListener('click', () => setMode('az'));
+  tabQuad.addEventListener('click', () => setMode('quad'));
+
+  function showError(msg){
+    errEl.textContent = msg;
+    errEl.style.display = msg ? 'block' : 'none';
+  }
+  function showWarn(msg){
+    warnEl.textContent = msg;
+    warnEl.style.display = msg ? 'block' : 'none';
+  }
+  function clearMessages(){
+    showError('');
+    showWarn('');
+  }
+
+  function updateDerived(){
+    const strike = Number(strikeAzEl.value);
+    if(Number.isNaN(strike)) { dipDirDerivedEl.value = '—'; return; }
+    const dd = norm360(strike + 90);
+    dipDirDerivedEl.value = dd.toFixed(3) + '°';
+  }
+
+  function updateParsed(){
+    // only meaningful in quadrant mode
+    if(mode !== 'quad') return;
+
+    const ps = parseAzOrQuadrant(strikeQuadEl.value);
+    parsedStrikeEl.textContent = ps.ok ? (ps.az.toFixed(3) + '°') : '—';
+
+    const pd = parseAzOrQuadrant(dipDirQuadEl.value);
+    parsedDipDirEl.textContent = pd.ok ? (pd.az.toFixed(3) + '°') : '—';
+
+    if(ps.ok && pd.ok){
+      const delta = dipDirConsistency(ps.az, pd.az);
+      if(delta <= 1){
+        consistencyEl.textContent = 'OK';
+        consistencyEl.style.color = 'var(--accent2)';
+      } else if(delta <= 5){
+        consistencyEl.textContent = `Close (off by ${delta.toFixed(1)}°)`;
+        consistencyEl.style.color = 'var(--warn)';
+      } else {
+        consistencyEl.textContent = `Check (off by ${delta.toFixed(1)}°)`;
+        consistencyEl.style.color = 'var(--danger)';
+      }
+    } else {
+      consistencyEl.textContent = '—';
+      consistencyEl.style.color = 'var(--muted)';
+    }
+  }
+
+  // live updates
+  strikeAzEl.addEventListener('input', updateDerived);
+  strikeQuadEl.addEventListener('input', updateParsed);
+  dipDirQuadEl.addEventListener('input', updateParsed);
+
+  function calculate(){
+    clearMessages();
+
+    const bearing = Number(bearingEl.value);
+    if(Number.isNaN(bearing)){
+      showError('Please enter a numeric bearing (azimuth).');
+      return;
+    }
+
+    let strike, dip;
+
+    if(mode === 'az'){
+      strike = Number(strikeAzEl.value);
+      dip = Number(dipAzEl.value);
+      if([strike, dip].some(v => Number.isNaN(v))){
+        showError('Please enter numeric strike and dip for Azimuth (RHR) mode.');
+        return;
+      }
+      if(dip < 0 || dip > 90){
+        showError('True dip must be between 0 and 90 degrees.');
+        return;
+      }
+
+      // show derived dip direction
+      updateDerived();
+
+    } else {
+      // quadrant mode
+      const ps = parseAzOrQuadrant(strikeQuadEl.value);
+      const pd = parseAzOrQuadrant(dipDirQuadEl.value);
+      dip = Number(dipQuadEl.value);
+
+      if(!ps.ok){ showError('Strike: ' + ps.err); return; }
+      if(Number.isNaN(dip) || dip < 0 || dip > 90){ showError('True dip must be between 0 and 90 degrees.'); return; }
+      if(!pd.ok){ showWarn('Dip direction not parsed — calculation will still work, but dip-direction validation is skipped.'); }
+
+      strike = ps.az;
+      updateParsed();
+
+      if(pd.ok){
+        const delta = dipDirConsistency(strike, pd.az);
+        if(delta > 5){
+          showWarn(`Dip direction looks inconsistent with strike (nearest perpendicular differs by ${delta.toFixed(1)}°). Check inputs.`);
+        }
+      }
+    }
+
+    const { apparent, theta } = computeApparentDip(strike, dip, bearing);
+    outEl.textContent = apparent.toFixed(3) + '°';
+    metaEl.textContent = `θ (acute angle between strike and bearing) = ${theta.toFixed(3)}°`;
+  }
+
+  document.getElementById('calc').addEventListener('click', calculate);
+
+  document.getElementById('clear').addEventListener('click', () => {
+    bearingEl.value = 0;
+    strikeAzEl.value = 0;
+    dipAzEl.value = 0;
+    dipQuadEl.value = 0;
+    strikeQuadEl.value = '';
+    dipDirQuadEl.value = '';
+    dipDirDerivedEl.value = '—';
+    parsedStrikeEl.textContent = '—';
+    parsedDipDirEl.textContent = '—';
+    consistencyEl.textContent = '—';
+    consistencyEl.style.color = 'var(--muted)';
+    outEl.textContent = '—';
+    metaEl.textContent = 'Enter values and tap Calculate.';
+    clearMessages();
+  });
+
+  // Init
+  setMode('az');
+  updateDerived();
+
+  // Optional service worker (best when hosted over HTTPS; harmless otherwise)
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
